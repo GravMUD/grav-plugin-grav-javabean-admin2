@@ -24,7 +24,7 @@ class JavaBeanMenubarLinks
             ],
             [
                 'label' => 'GetGRAV!',
-                'url' => 'https://goggrav.live',
+                'url' => 'https://getgrav.live',
                 'icon' => 'fa-rocket',
                 'external' => true,
             ],
