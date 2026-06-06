@@ -68,6 +68,24 @@
 
   }
 
+  async function fetchJavaBean(path, options = {}) {
+    const { serverUrl, apiPrefix, token } = apiConfig();
+    const headers = { ...(options.headers || {}) };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const bases = [`${apiPrefix}${path}`, `${apiPrefix}/mud-admin${path}`];
+    let lastErr = null;
+    for (const base of bases) {
+      try {
+        const res = await fetch(`${serverUrl}${base}`, { ...options, credentials: 'include', headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error('JavaBean API unavailable');
+  }
+
 
 
   class JavaBeanPresetPicker extends HTMLElement {
@@ -178,23 +196,7 @@
 
       try {
 
-        const { serverUrl, apiPrefix, token } = apiConfig();
-
-        const headers = {};
-
-        if (token) headers.Authorization = `Bearer ${token}`;
-
-
-
-        const res = await fetch(`${serverUrl}${apiPrefix}/javabean/presets`, {
-
-          credentials: 'include',
-
-          headers,
-
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await fetchJavaBean('/javabean/presets');
 
         const json = await res.json();
 

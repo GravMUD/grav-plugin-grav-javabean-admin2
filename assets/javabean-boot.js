@@ -136,32 +136,53 @@
     await patchPreferences(body);
   }
 
+  async function fetchJavaBean(path, options = {}) {
+    const { url, token } = apiBase();
+    const headers = { ...authHeaders(), ...(options.headers || {}) };
+    const paths = [path, `/mud-admin${path}`];
+    let lastErr = null;
+    for (const p of paths) {
+      try {
+        const res = await fetch(`${url}${p}`, { ...options, credentials: 'include', headers });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error('JavaBean API unavailable');
+  }
+
   async function syncPreferencesFromSettings() {
     try {
-      const { url } = apiBase();
-      const headers = authHeaders();
-      const res = await fetch(`${url}/javabean/settings`, {
-        credentials: 'include',
-        headers,
-      });
-      if (!res.ok) return;
+      let data = null;
+      try {
+        const res = await fetchJavaBean('/javabean/settings');
+        const json = await res.json();
+        data = json.data || json;
+      } catch (_) {
+        const cfgRes = await fetch(`${apiBase().url}/config/plugins/javabean-admin2`, {
+          credentials: 'include',
+          headers: authHeaders(),
+        });
+        if (cfgRes.ok) {
+          const cfgJson = await cfgRes.json();
+          data = cfgJson.data || cfgJson;
+        }
+      }
+      if (!data) return;
 
-      const json = await res.json();
-      const data = json.data || json;
       const styling = data.advanced?.styling || data.styling || {};
       const presetSlug = data.presets?.active_preset || data.active_preset;
 
       let preset = null;
       if (presetSlug) {
-        const presetsRes = await fetch(`${url}/javabean/presets`, {
-          credentials: 'include',
-          headers,
-        });
-        if (presetsRes.ok) {
+        try {
+          const presetsRes = await fetchJavaBean('/javabean/presets');
           const presetsJson = await presetsRes.json();
           const presets = presetsJson.data?.presets || presetsJson.presets || [];
           preset = presets.find((p) => p.slug === presetSlug) || null;
-        }
+        } catch (_) { /* presets optional for font sync */ }
       }
 
       const body = {};
